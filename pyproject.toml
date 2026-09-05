@@ -1,0 +1,38 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "memx"
+version = "0.1.0"
+description = "Vendor-agnostic diagnostic harness for agentic memory systems."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [{ name = "memx" }]
+dependencies = [
+    "typer>=0.12",
+    "rich>=13.7",
+    "pydantic>=2.6",
+    "litellm>=1.35",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-cov",
+]
+
+[project.scripts]
+memx = "memx.cli.main:app"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/memx"]
+
+[tool.hatch.build.targets.wheel.sources]
+"src/memx" = "memx"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+addopts = "-q"
