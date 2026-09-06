@@ -9,10 +9,6 @@ export const SHOTS = {
     file: "01-summary-table.png",
     caption: "Diagnostic Summary: FAIL counts by memory-pipeline stage.",
   },
-  mockRun: {
-    file: "02-run-mock.png",
-    caption: "memx run with the mock adapter: progress, last_run path, and summary.",
-  },
   hostedProgress: {
     file: "03-run-hosted-progress.png",
     caption: "Hosted ingest in progress (queue ingest or waiting on SuperMemory / Mem0).",

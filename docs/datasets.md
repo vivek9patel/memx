@@ -15,7 +15,7 @@ Cache directory: `~/.cache/memx/datasets` unless `MEMX_CACHE_DIR` is set.
 
 ```bash
 memx datasets pull locomo
-memx run --dataset locomo --adapter mock --limit 5 --random
+memx run --dataset locomo --adapter supermemory --limit 5 --random
 ```
 
 `--source path/to.json` uses a local file and does not download. The loader is still chosen from `--dataset` (`locomo` vs `longmemeval` JSON shapes).

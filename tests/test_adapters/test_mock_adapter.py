@@ -3,10 +3,10 @@ from __future__ import annotations
 import pytest
 from pydantic import ValidationError
 
-from memx import MockMemoryAdapter, Session
 from memx.adapters.base import BaseMemoryAdapter
+from memx.adapters.mock import MockMemoryAdapter
 from memx.exceptions import AdapterError
-from memx.schemas.session import Speaker, Turn
+from memx.schemas.session import Session, Speaker, Turn
 from memx.schemas.state import FactStatus
 
 

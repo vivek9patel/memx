@@ -9,8 +9,8 @@ from memx.cli.adapter_loader import load_adapter
 from memx.cli.main import app
 
 
-def test_load_adapter_short_name_mock() -> None:
-    adapter = load_adapter("mock")
+def test_load_adapter_import_path() -> None:
+    adapter = load_adapter("memx.adapters.mock:MockMemoryAdapter")
     assert isinstance(adapter, MockMemoryAdapter)
 
 
@@ -19,6 +19,8 @@ def test_load_adapter_unknown_short_name() -> None:
         resolve_adapter_path("not-a-provider")
     with pytest.raises(Exception, match="Unknown adapter"):
         load_adapter("not-a-provider")
+    with pytest.raises(Exception, match="Unknown adapter"):
+        load_adapter("mock")
 
 
 def test_run_help_lists_builtin_adapters() -> None:
@@ -26,4 +28,4 @@ def test_run_help_lists_builtin_adapters() -> None:
     assert result.exit_code == 0
     assert "mem0" in result.output
     assert "supermemory" in result.output
-    assert "mock" in result.output
+    assert "mock" not in result.output.lower()

@@ -41,12 +41,13 @@ Optional backends: `pip install -e ".[mem0]"` or `".[supermemory]"` (or `".[prov
 ## Quick start
 
 ```bash
+export SUPERMEMORY_API_KEY=...   # or MEM0_API_KEY and --adapter mem0
 memx datasets pull locomo
-memx run --dataset locomo --adapter mock --limit 5 --random
+memx run --dataset locomo --adapter supermemory --limit 5 --random
 memx debug <question_id from the summary>
 ```
 
-Hosted Mem0 / SuperMemory: set `MEM0_API_KEY` or `SUPERMEMORY_API_KEY`, then `--adapter mem0` / `supermemory`. See [docs/adapters.md](docs/adapters.md).
+See [docs/adapters.md](docs/adapters.md).
 
 Docs: [docs/README.md](docs/README.md). Local site:
 

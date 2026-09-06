@@ -39,7 +39,7 @@ def run(
         str,
         typer.Option(
             help=(
-                "Built-in adapter name (mock, mem0, supermemory) or "
+                "Built-in adapter name (mem0, supermemory) or "
                 "module.path:ClassName of a BaseMemoryAdapter."
             )
         ),

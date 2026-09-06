@@ -2,7 +2,6 @@ from __future__ import annotations
 
 # Short CLI names -> module.path:ClassName
 BUILTIN_ADAPTERS: dict[str, str] = {
-    "mock": "memx.adapters.mock:MockMemoryAdapter",
     "mem0": "memx.adapters.mem0:Mem0Adapter",
     "supermemory": "memx.adapters.supermemory:SupermemoryAdapter",
 }

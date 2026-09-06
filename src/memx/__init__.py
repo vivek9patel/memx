@@ -1,6 +1,5 @@
 from memx.adapters.base import BaseMemoryAdapter
 from memx.adapters.mem0 import Mem0Adapter
-from memx.adapters.mock import MockMemoryAdapter
 from memx.adapters.supermemory import SupermemoryAdapter
 from memx.schemas.query import QueryResult, RetrievedFact
 from memx.schemas.session import Session, Speaker, Turn
@@ -12,7 +11,6 @@ __all__ = [
     "FactStatus",
     "Mem0Adapter",
     "MemoryFact",
-    "MockMemoryAdapter",
     "QueryResult",
     "RetrievedFact",
     "Session",

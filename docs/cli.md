@@ -5,8 +5,9 @@ Entry point: `memx` (`memx.cli.main:app`). `memx --help` lists commands.
 Typical loop: pull a dataset, run (ingest → query → judge → diagnose FAILs), then inspect one FAIL.
 
 ```bash
+export SUPERMEMORY_API_KEY=...
 memx datasets pull locomo
-memx run --dataset locomo --adapter mock --limit 5 --random
+memx run --dataset locomo --adapter supermemory --limit 5 --random
 memx debug <question_id from the summary>
 ```
 
@@ -17,17 +18,13 @@ memx debug <question_id from the summary>
 Ingest sessions (unless `--skip-ingest`), query, judge, diagnose FAILs, write `.memx/last_run.json` under the current working directory.
 
 ```bash
-memx run --dataset locomo --adapter mock --limit 5 --random
+memx run --dataset locomo --adapter supermemory --limit 5 --random
 ```
-
-![memx run with the mock adapter](../website/public/shots/02-run-mock.png)
-
-Mock often passes every question (no Diagnostic Summary of FAILs). Use a hosted adapter when you need stage counts.
 
 | Option | Default | Behavior |
 | --- | --- | --- |
 | `--dataset` | required | `locomo`, `longmemeval`, `longmemeval-s`, `longmemeval-m`, or a name used with `--source` |
-| `--adapter` | required | `mock`, `mem0`, `supermemory`, or `module.path:ClassName` |
+| `--adapter` | required | `mem0`, `supermemory`, or `module.path:ClassName` |
 | `--source` | cache file for `--dataset` | Local JSON path; skips download |
 | `--judge-model` | `gpt-4o-mini` | LiteLLM model for pass/fail (and Stage 1 relevance on FAIL) |
 | `--answer-model` | unset | LiteLLM model to synthesize an answer from retrieved facts. If omitted, the candidate is concatenated retrieval text |

@@ -3,9 +3,9 @@
 The engine only talks to `BaseMemoryAdapter`. Loaders produce `BenchmarkCase` (`sessions` + `questions`). After a FAIL, `DiagnosticClassifier` (`memx.diagnostics`) maps the state diff and `query` result onto a taxonomy stage.
 
 ```python
-from memx import Session, Turn, Speaker, MockMemoryAdapter
+from memx import Session, Turn, Speaker
 
-adapter = MockMemoryAdapter()
+# adapter: BaseMemoryAdapter (Mem0Adapter, SupermemoryAdapter, or your subclass)
 adapter.ingest_session(session)
 adapter.wait_until_ready(session.entity_id)
 state = adapter.export_state(session.entity_id)

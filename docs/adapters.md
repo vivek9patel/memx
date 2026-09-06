@@ -4,17 +4,12 @@
 
 | Name | Class | Extra |
 | --- | --- | --- |
-| `mock` | `memx.adapters.mock:MockMemoryAdapter` | none (always available) |
 | `mem0` | `memx.adapters.mem0:Mem0Adapter` | `pip install -e ".[mem0]"` |
 | `supermemory` | `memx.adapters.supermemory:SupermemoryAdapter` | `pip install -e ".[supermemory]"` |
 
 ```bash
 pip install -e ".[providers]"   # mem0 + supermemory
 ```
-
-## Mock
-
-In-memory. Each USER turn becomes one fact. `wait_until_ready` is a no-op. Use for CLI/engine tests and dry runs.
 
 ## Mem0
 

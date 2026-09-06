@@ -19,7 +19,7 @@ def _tokens(text: str) -> set[str]:
 
 
 class MockMemoryAdapter(BaseMemoryAdapter):
-    """In-memory adapter used as a deterministic test double.
+    """In-memory test double. Not a CLI ``--adapter`` name; tests import the class.
 
     Facts are stored per ``entity_id`` in insertion order. ``export_state``
     returns that order for inspectability, but callers must treat the snapshot
