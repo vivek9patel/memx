@@ -8,7 +8,7 @@ Vendor-agnostic Python diagnostic harness for agentic memory systems. Adapters i
 pip install -e ".[dev]"
 ```
 
-Requires Python 3.11+.
+Requires Python 3.11+. Licensed under MIT (see `LICENSE`).
 
 ## Core types
 

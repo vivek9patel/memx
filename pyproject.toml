@@ -8,8 +8,8 @@ version = "0.1.0"
 description = "Vendor-agnostic diagnostic harness for agentic memory systems."
 readme = "README.md"
 requires-python = ">=3.11"
-license = { text = "MIT" }
-authors = [{ name = "memx" }]
+license = { file = "LICENSE" }
+authors = [{ name = "Vivek Patel" }]
 dependencies = [
     "typer>=0.12",
     "rich>=13.7",
