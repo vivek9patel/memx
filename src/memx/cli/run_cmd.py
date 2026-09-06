@@ -9,6 +9,7 @@ from rich.console import Console
 from memx.cli.adapter_loader import load_adapter
 from memx.cli.engine import QuestionEval, evaluate_questions
 from memx.cli.run_store import save_last_run
+from memx.cli.sample import collect_question_ids, sample_question_ids
 from memx.datasets.fetch import ensure_dataset
 from memx.datasets.registry import get_loader
 from memx.diagnostics.classifier import DiagnosticClassifier
@@ -59,6 +60,22 @@ def run(
         typer.Option(help="Seconds to wait for adapter indexing after each ingest_session()."),
     ] = 30.0,
     limit: Annotated[int | None, typer.Option(help="Cap the number of questions evaluated.")] = None,
+    random_sample: Annotated[
+        bool,
+        typer.Option(
+            "--random",
+            help=(
+                "With --limit, sample that many questions uniformly from the full "
+                "dataset instead of taking the first N. Requires --limit."
+            ),
+        ),
+    ] = False,
+    seed: Annotated[
+        int | None,
+        typer.Option(
+            help="RNG seed for --random. If omitted, a seed is chosen and printed so you can reproduce the sample."
+        ),
+    ] = None,
 ) -> None:
     """Run a full benchmark: ingest sessions, ask questions, judge answers, diagnose failures."""
     console = Console(theme=MEMX_THEME)
@@ -71,6 +88,8 @@ def run(
             answer_model=answer_model,
             ready_timeout=ready_timeout,
             limit=limit,
+            random_sample=random_sample,
+            seed=seed,
             console=console,
         )
     except AdapterTimeoutError as exc:
@@ -93,6 +112,8 @@ def _run(
     answer_model: str | None,
     ready_timeout: float,
     limit: int | None,
+    random_sample: bool,
+    seed: int | None,
     console: Console,
 ) -> list[DiagnosticResult]:
     resolved = ensure_dataset(dataset, source=source)
@@ -104,16 +125,33 @@ def _run(
     snapshot_engine = StateSnapshotEngine()
     classifier = DiagnosticClassifier(relevance_fn=judge.relevance_fn)
 
+    if random_sample and limit is None:
+        raise MemxError("--random requires --limit so the sample size is defined.")
+
+    question_filter: set[str] | None = None
+    cases_seen = 0
+    if random_sample:
+        cases_seen, all_ids = collect_question_ids(loader)
+        if not all_ids:
+            raise MemxError("Dataset has no questions to sample.")
+        sampled, used_seed = sample_question_ids(all_ids, limit or 0, seed)
+        question_filter = set(sampled)
+        console.print(
+            f"Random sample: {len(sampled)}/{len(all_ids)} questions (seed={used_seed})"
+        )
+
     results: list[DiagnosticResult] = []
     traces: list[QuestionEval] = []
     passed = failed = 0
-    cases_seen = 0
 
     with build_eval_progress() as progress:
         task = progress.add_task("Evaluating", total=None, status="0 passed / 0 failed")
         for case in loader:
-            cases_seen += 1
-            remaining = None if limit is None else max(0, limit - (passed + failed))
+            if question_filter is None:
+                cases_seen += 1
+            elif not any(q.question_id in question_filter for q in case.questions):
+                continue
+            remaining = None if limit is None or random_sample else max(0, limit - (passed + failed))
             if remaining == 0:
                 break
             for item in evaluate_questions(
@@ -125,6 +163,7 @@ def _run(
                 synthesizer=synthesizer,
                 ready_timeout=ready_timeout,
                 limit=remaining,
+                question_ids=question_filter,
             ):
                 traces.append(item)
                 if item.verdict.passed:

@@ -35,9 +35,10 @@ memx datasets pull longmemeval          # oracle split (evidence sessions only)
 # memx datasets pull longmemeval-s      # ~277 MB
 # memx datasets pull longmemeval-m      # ~2.7 GB
 
-# Omit --source to use the cache. --limit keeps a first real run cheap.
-memx run --dataset locomo --adapter memx.adapters.mock:MockMemoryAdapter --limit 5
-memx run --dataset longmemeval --adapter memx.adapters.mock:MockMemoryAdapter --limit 5
+# Omit --source to use the cache. --limit keeps a first real run cheap;
+# add --random to sample across the whole file instead of the first N questions.
+memx run --dataset locomo --adapter memx.adapters.mock:MockMemoryAdapter --limit 5 --random
+memx run --dataset longmemeval --adapter memx.adapters.mock:MockMemoryAdapter --limit 5 --random --seed 1
 ```
 
 Pass `--source path/to/file.json` to use a local copy instead of downloading.
