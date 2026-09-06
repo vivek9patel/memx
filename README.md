@@ -24,6 +24,24 @@ result = adapter.query("where does alex live?", session.entity_id)
 
 `MockMemoryAdapter` is an in-memory reference backend for tests. Real backends (Mem0, Graphiti, custom stores) subclass `BaseMemoryAdapter`. Async backends must override `wait_until_ready()`.
 
+## Built-in datasets
+
+LoCoMo and LongMemEval are registered by default. Official JSON is fetched into `~/.cache/memx/datasets` (override with `MEMX_CACHE_DIR`).
+
+```bash
+memx datasets list
+memx datasets pull locomo
+memx datasets pull longmemeval          # oracle split (evidence sessions only)
+# memx datasets pull longmemeval-s      # ~277 MB
+# memx datasets pull longmemeval-m      # ~2.7 GB
+
+# Omit --source to use the cache. --limit keeps a first real run cheap.
+memx run --dataset locomo --adapter memx.adapters.mock:MockMemoryAdapter --limit 5
+memx run --dataset longmemeval --adapter memx.adapters.mock:MockMemoryAdapter --limit 5
+```
+
+Pass `--source path/to/file.json` to use a local copy instead of downloading.
+
 ## Development
 
 ```bash

@@ -9,6 +9,7 @@ from rich.console import Console
 from memx.cli.adapter_loader import load_adapter
 from memx.cli.engine import QuestionEval, evaluate_questions
 from memx.cli.run_store import save_last_run
+from memx.datasets.fetch import ensure_dataset
 from memx.datasets.registry import get_loader
 from memx.diagnostics.classifier import DiagnosticClassifier
 from memx.diagnostics.models import DiagnosticResult
@@ -22,9 +23,25 @@ from memx.ui.theme import MEMX_THEME
 
 
 def run(
-    dataset: Annotated[str, typer.Option(help="Registered dataset name, e.g. 'locomo'.")],
-    source: Annotated[Path, typer.Option(help="Path to the dataset JSON file.")],
+    dataset: Annotated[
+        str,
+        typer.Option(
+            help=(
+                "Built-in dataset: locomo, longmemeval (oracle), "
+                "longmemeval-s, longmemeval-m. Custom JSON still works with --source."
+            )
+        ),
+    ],
     adapter: Annotated[str, typer.Option(help="module.path:ClassName of a BaseMemoryAdapter.")],
+    source: Annotated[
+        Path | None,
+        typer.Option(
+            help=(
+                "Path to a dataset JSON file. Omit to download/use the official "
+                "file from ~/.cache/memx/datasets (see memx datasets list)."
+            )
+        ),
+    ] = None,
     judge_model: Annotated[
         str, typer.Option(help="LiteLLM model string for pass/fail judging.")
     ] = "gpt-4o-mini",
@@ -70,7 +87,7 @@ def run(
 def _run(
     *,
     dataset: str,
-    source: Path,
+    source: Path | None,
     adapter: str,
     judge_model: str,
     answer_model: str | None,
@@ -78,7 +95,9 @@ def _run(
     limit: int | None,
     console: Console,
 ) -> list[DiagnosticResult]:
-    loader = get_loader(dataset, source)
+    resolved = ensure_dataset(dataset, source=source)
+    console.print(f"Dataset {dataset}: {resolved}")
+    loader = get_loader(dataset, resolved)
     adapter_instance = load_adapter(adapter)
     judge = LiteLLMJudge(model=judge_model)
     synthesizer = LiteLLMAnswerSynthesizer(model=answer_model) if answer_model else None
@@ -121,7 +140,7 @@ def _run(
         raise typer.Exit(code=1)
     saved_path = save_last_run(
         dataset=dataset,
-        source=source,
+        source=resolved,
         adapter=adapter,
         items=traces,
     )
