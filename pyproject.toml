@@ -22,6 +22,9 @@ dev = [
     "pytest>=8.0",
     "pytest-cov",
 ]
+streaming = [
+    "ijson>=3.2",
+]
 
 [project.scripts]
 memx = "memx.cli.main:app"

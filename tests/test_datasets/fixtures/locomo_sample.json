@@ -1,0 +1,60 @@
+[
+  {
+    "sample_id": "conv-caroline",
+    "conversation": {
+      "speaker_a": "Caroline",
+      "speaker_b": "Melanie",
+      "session_1_date_time": "1:56 pm on 8 May, 2023",
+      "session_1": [
+        {"speaker": "Caroline", "dia_id": "D1:1", "text": "I just moved to Boston last month."},
+        {"speaker": "Melanie", "dia_id": "D1:2", "text": "Welcome to the east coast!"}
+      ],
+      "session_2_date_time": "10:12 am on 22 May, 2023",
+      "session_2": [
+        {"speaker": "Caroline", "dia_id": "D2:1", "text": "I started a new job at Acme Corp."},
+        {"speaker": "Melanie", "dia_id": "D2:2", "text": "That is exciting news."}
+      ]
+    },
+    "qa": [
+      {
+        "question": "Where does Caroline live?",
+        "answer": "Boston",
+        "evidence": ["D1:1"],
+        "category": 4
+      },
+      {
+        "question": "Where does Caroline work and live?",
+        "answer": "Acme Corp in Boston",
+        "evidence": ["D1:1", "D2:1"],
+        "category": 1
+      }
+    ]
+  },
+  {
+    "sample_id": "conv-jon",
+    "conversation": {
+      "speaker_a": "Jon",
+      "speaker_b": "Gina",
+      "session_1": [
+        {"speaker": "Jon", "dia_id": "D1:1", "text": "My anniversary is on June 3rd."}
+      ]
+    },
+    "qa": [
+      {
+        "question": "When is Jon's anniversary?",
+        "answer": "June 3rd",
+        "evidence": ["D1:1"],
+        "category": 2
+      }
+    ]
+  },
+  {
+    "sample_id": "conv-malformed",
+    "conversation": {
+      "speaker_a": "Empty",
+      "speaker_b": "Talk",
+      "session_1": []
+    },
+    "qa": []
+  }
+]

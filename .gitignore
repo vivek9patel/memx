@@ -35,3 +35,4 @@ env/
 # Test / local artifacts
 .cache/
 *.log
+.memx/

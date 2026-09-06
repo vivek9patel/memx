@@ -1,0 +1,45 @@
+[
+  {
+    "question_id": "lme-user-001",
+    "question_type": "single-session-user",
+    "question": "Where does the user live?",
+    "answer": "Boston",
+    "question_date": "2023-06-01",
+    "haystack_session_ids": ["sess-a"],
+    "haystack_dates": ["2023-01-15"],
+    "answer_session_ids": ["sess-a"],
+    "haystack_sessions": [
+      [
+        {"role": "user", "content": "I live in Boston.", "has_answer": true},
+        {"role": "assistant", "content": "Got it, Boston it is."}
+      ]
+    ]
+  },
+  {
+    "question_id": "lme-ku-002",
+    "question_type": "knowledge-update",
+    "question": "What city does the user live in now?",
+    "answer": "Seattle",
+    "question_date": "2024-02-01",
+    "haystack_session_ids": ["sess-old", "sess-new"],
+    "haystack_dates": ["2023-01-15", "2024-01-20"],
+    "answer_session_ids": ["sess-new"],
+    "haystack_sessions": [
+      [
+        {"role": "user", "content": "I live in Boston."},
+        {"role": "assistant", "content": "Noted."}
+      ],
+      [
+        {"role": "user", "content": "I moved to Seattle last week.", "has_answer": true},
+        {"role": "assistant", "content": "Congratulations on the move."}
+      ]
+    ]
+  },
+  {
+    "question_id": "lme-malformed",
+    "question_type": "single-session-user",
+    "question": "",
+    "answer": "missing",
+    "haystack_sessions": []
+  }
+]
