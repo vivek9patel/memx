@@ -36,3 +36,7 @@ env/
 .cache/
 *.log
 .memx/
+TODO-docs-screenshots.md
+website/node_modules/
+website/.next/
+website/out/

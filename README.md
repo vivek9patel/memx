@@ -1,78 +1,63 @@
 # memx
 
-Vendor-agnostic Python diagnostic harness for agentic memory systems. Adapters implement a small ingest / wait-until-ready / query / export-state contract; the rest of the toolkit (loaders, diagnostics, CLI) consumes those types.
+Vendor-agnostic harness for evaluating memory systems: it scores answers **and** classifies *why* a question failed.
+
+Ingest conversational sessions into a backend (any adapter), ask benchmark questions, judge the answers, then on each FAIL snapshot the store and assign a stage: extraction, conflict resolution, mutation, or retrieval. Inspect one case with `memx debug`.
+
+## What a run gives you
+
+- Pass/fail per question (LLM judge)
+- A **Diagnostic Summary** of FAIL counts by stage
+- `.memx/last_run.json` (cwd; gitignored) with gold, candidate, retrieval, state diff, and diagnosis
+- `memx debug <question_id>` for one record: question, gold, provider answer, retrieved facts, stage badge, state diff
+
+![Diagnostic Summary after a hosted run](website/public/shots/01-summary-table.png)
+
+![memx debug on a FAIL](website/public/shots/04-debug-question.png)
+
+Passes are not classified. If the judge failed but the store and retrieval look correct, the stage is **No Failure** (often answer synthesis, not memory).
+
+## Failure stages
+
+| Stage | Meaning |
+| --- | --- |
+| 1 Extraction | Needed fact never entered the store |
+| 2 Conflict resolution | Two relevant truths both ACTIVE, no `supersedes` link |
+| 3 Mutation | Conflict linked, old row still ACTIVE |
+| 4 Retrieval | Store looks correct; search missed the fact |
+
+Details: [docs/diagnostics.md](docs/diagnostics.md).
 
 ## Install
+
+Python 3.11+. From this repo:
 
 ```bash
 pip install -e ".[dev]"
 ```
 
-Requires Python 3.11+. Licensed under MIT (see `LICENSE`).
+Optional backends: `pip install -e ".[mem0]"` or `".[supermemory]"` (or `".[providers]"` for both).
 
-## Core types
-
-```python
-from memx import Session, Turn, Speaker, MockMemoryAdapter
-
-adapter = MockMemoryAdapter()
-adapter.ingest_session(session)
-adapter.wait_until_ready(session.entity_id)
-state = adapter.export_state(session.entity_id)
-result = adapter.query("where does alex live?", session.entity_id)
-```
-
-`MockMemoryAdapter` is an in-memory reference backend for tests. **Mem0** and **Supermemory** ship as first-party adapters (`--adapter mem0` / `--adapter supermemory`). Other backends subclass `BaseMemoryAdapter`. Async backends must override `wait_until_ready()`.
-
-## Built-in providers
-
-SDKs are optional extras so a mock-only install stays small.
+## Quick start
 
 ```bash
-pip install -e ".[mem0]"
-export MEM0_API_KEY=...          # platform; omit to use OSS Memory() + OPENAI_API_KEY
-# OSS fact extraction defaults to gpt-5-mini. GPT-5 rejects temperature=0.1;
-# memx marks those models as reasoning so Mem0 omits temperature.
-# Optional: MEM0_LLM_MODEL=gpt-4o-mini
-memx run --dataset locomo --adapter mem0 --limit 5 --random
-
-pip install -e ".[supermemory]"
-export SUPERMEMORY_API_KEY=...   # optional SUPERMEMORY_BASE_URL for self-host
-memx run --dataset locomo --adapter supermemory --limit 5 --random
-```
-
-`--adapter mock` is the same as `memx.adapters.mock:MockMemoryAdapter`.
-
-Hosted adapters queue ingest (Mem0 `async_mode`, SuperMemory `dreaming=instant`) and poll pending events/documents **in parallel**. Context sessions with no selected questions are added concurrently, then one `wait_until_ready` covers that batch; a session that has questions still waits on its own so diagnostics snapshot that session. Independent conversations run in parallel with `--concurrency` (default 4). Prefix `--limit` without `--random` stays serial so “first N” is stable.
-
-## Built-in datasets
-
-LoCoMo and LongMemEval are registered by default. Official JSON is fetched into `~/.cache/memx/datasets` (override with `MEMX_CACHE_DIR`).
-
-```bash
-memx datasets list
 memx datasets pull locomo
-memx datasets pull longmemeval          # oracle split (evidence sessions only)
-# memx datasets pull longmemeval-s      # ~277 MB
-# memx datasets pull longmemeval-m      # ~2.7 GB
-
-# Omit --source to use the cache. --limit keeps a first real run cheap;
-# add --random to sample across the whole file instead of the first N questions.
 memx run --dataset locomo --adapter mock --limit 5 --random
-memx run --dataset longmemeval --adapter mock --limit 5 --random --seed 1
+memx debug <question_id from the summary>
 ```
 
-`--skip-ingest` reuses the backend as-is: no `ingest_session` / `wait_until_ready`. Same `--dataset` / `--limit` / `--random` / `--seed` as the ingest run, plus whatever `--judge-model` / `--answer-model` you want. Indexing must already be done; this is not resume-from-timeout.
+Hosted Mem0 / SuperMemory: set `MEM0_API_KEY` or `SUPERMEMORY_API_KEY`, then `--adapter mem0` / `supermemory`. See [docs/adapters.md](docs/adapters.md).
+
+Docs: [docs/README.md](docs/README.md). Local site:
 
 ```bash
-memx run --dataset locomo --adapter supermemory --limit 4 --random --seed 3691545448 \
-  --skip-ingest --answer-model gpt-4o --judge-model gpt-4o
+cd website && npm install && npm run dev
 ```
 
-Pass `--source path/to/file.json` to use a local copy instead of downloading.
-
-## Development
+http://localhost:3000. `npm run build` writes `website/out/` (set the host project root to `website/`; the build still reads `../docs`).
 
 ```bash
 pytest tests/ -v
 ```
+
+MIT. See `LICENSE`.

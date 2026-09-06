@@ -17,7 +17,7 @@ from memx.datasets.registry import get_loader
 from memx.diagnostics.classifier import DiagnosticClassifier
 from memx.diagnostics.models import DiagnosticResult
 from memx.diagnostics.snapshot import StateSnapshotEngine
-from memx.exceptions import AdapterTimeoutError, MemxError
+from memx.exceptions import AdapterError, AdapterTimeoutError, MemxError
 from memx.judge.litellm_judge import LiteLLMJudge
 from memx.synthesis.litellm_answer import LiteLLMAnswerSynthesizer
 from memx.ui.progress import build_eval_progress, update_eval_progress
@@ -70,7 +70,7 @@ def run(
         typer.Option(
             help=(
                 "Seconds to wait for adapter indexing after each ingest_session(). "
-                "LoCoMo sessions on hosted providers often need 120–300s."
+                "One slow conversation no longer aborts the rest of the run."
             )
         ),
     ] = 180.0,
@@ -111,7 +111,7 @@ def run(
         ),
     ] = False,
 ) -> None:
-    """Run a full benchmark: ingest sessions, ask questions, judge answers, diagnose failures."""
+    """Ingest sessions, ask questions, judge answers, and diagnose failures."""
     console = Console(theme=MEMX_THEME)
     try:
         _run(
@@ -219,10 +219,11 @@ def _run(
                     progress, task, passed, failed, completed=passed + failed
                 )
 
-        def run_case(case) -> list[QuestionEval]:
+        def evaluate_case(case, case_limit: int | None = None) -> list[QuestionEval]:
             report(f"Case {case.case_id}")
-            return list(
-                evaluate_questions(
+            items: list[QuestionEval] = []
+            try:
+                for item in evaluate_questions(
                     cases=iter([case]),
                     adapter=adapter_instance,
                     judge=judge,
@@ -230,12 +231,17 @@ def _run(
                     snapshot_engine=snapshot_engine,
                     synthesizer=synthesizer,
                     ready_timeout=ready_timeout,
-                    limit=None,
+                    limit=case_limit,
                     question_ids=question_filter,
                     on_status=report,
                     skip_ingest=skip_ingest,
-                )
-            )
+                ):
+                    items.append(item)
+            except AdapterError as exc:
+                with progress_lock:
+                    console.print(f"[fail]{case.case_id}: {exc}[/fail]")
+                report(f"Skip {case.case_id}")
+            return items
 
         if workers == 1:
             for case in loader:
@@ -246,20 +252,7 @@ def _run(
                 remaining = None if limit is None or random_sample else max(0, limit - (passed + failed))
                 if remaining == 0:
                     break
-                report(f"Case {case.case_id}")
-                for item in evaluate_questions(
-                    cases=iter([case]),
-                    adapter=adapter_instance,
-                    judge=judge,
-                    classifier=classifier,
-                    snapshot_engine=snapshot_engine,
-                    synthesizer=synthesizer,
-                    ready_timeout=ready_timeout,
-                    limit=remaining,
-                    question_ids=question_filter,
-                    on_status=report,
-                    skip_ingest=skip_ingest,
-                ):
+                for item in evaluate_case(case, remaining):
                     consume(item)
         else:
             in_flight: set = set()
@@ -269,7 +262,7 @@ def _run(
                         cases_seen += 1
                     elif not any(q.question_id in question_filter for q in case.questions):
                         continue
-                    in_flight.add(pool.submit(run_case, case))
+                    in_flight.add(pool.submit(evaluate_case, case))
                     if len(in_flight) >= workers:
                         finished, in_flight = wait(in_flight, return_when=FIRST_COMPLETED)
                         for future in finished:

@@ -127,6 +127,20 @@ def test_supermemory_hybrid_query_reads_document_chunks(fixture_session: Session
     assert result.retrieved_facts[0].metadata.get("source") == "chunk"
 
 
+def test_supermemory_dreaming_done_is_ready_while_indexing(
+    fixture_session: Session,
+) -> None:
+    client = FakeSupermemory()
+    adapter = SupermemoryAdapter(
+        client=client, sleeper=lambda _s: None, clock=lambda: 0.0, poll_interval_s=0.1
+    )
+    adapter.ingest_session(fixture_session)
+    for doc in client.docs.values():
+        doc["status"] = "indexing"
+        doc["dreaming_status"] = "done"
+    adapter.wait_until_ready(fixture_session.entity_id, timeout_s=1.0)
+
+
 def test_supermemory_indexing_is_not_ready(fixture_session: Session) -> None:
     ticks = {"n": 0.0}
 

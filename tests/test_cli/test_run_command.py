@@ -120,6 +120,31 @@ def test_run_skip_ingest_does_not_require_ingest(runner, monkeypatch, isolate_la
     assert [q["question_id"] for q in payload["questions"]] == ["conv-caroline_q0000"]
 
 
+def test_run_adapter_timeout_skips_case_and_saves_rest(
+    runner, monkeypatch, isolate_last_run
+) -> None:
+    mock_judge(monkeypatch, always_pass)
+    result = runner.invoke(
+        app,
+        [
+            "run",
+            "--dataset",
+            "locomo",
+            "--source",
+            str(LOCOMO),
+            "--adapter",
+            "tests.test_cli.adapters:TimeoutCarolineAdapter",
+            "--concurrency",
+            "2",
+        ],
+    )
+    assert result.exit_code == 0, result.output
+    assert "conv-caroline" in result.output
+    assert "timed out" in result.output
+    payload = json.loads(isolate_last_run.read_text(encoding="utf-8"))
+    assert [q["question_id"] for q in payload["questions"]] == ["conv-jon_q0000"]
+
+
 def test_run_help_mentions_skip_ingest(runner) -> None:
     result = runner.invoke(app, ["run", "--help"])
     assert result.exit_code == 0, result.output

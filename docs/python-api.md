@@ -1,0 +1,31 @@
+# Python API
+
+The engine only talks to `BaseMemoryAdapter`. Loaders produce `BenchmarkCase` (`sessions` + `questions`). After a FAIL, `DiagnosticClassifier` (`memx.diagnostics`) maps the state diff and `query` result onto a taxonomy stage.
+
+```python
+from memx import Session, Turn, Speaker, MockMemoryAdapter
+
+adapter = MockMemoryAdapter()
+adapter.ingest_session(session)
+adapter.wait_until_ready(session.entity_id)
+state = adapter.export_state(session.entity_id)
+result = adapter.query("where does alex live?", session.entity_id)
+```
+
+## Contract
+
+Lifecycle for a session that has questions:
+
+1. `export_state(entity_id)` — pre snapshot
+2. `ingest_session(session)`
+3. `wait_until_ready(entity_id, timeout_s=..., on_status=...)`
+4. `export_state(entity_id)` — post snapshot
+5. `query(text, entity_id)` per question on that session
+
+Synchronous stores may leave `wait_until_ready` as the default no-op. Async stores must block or poll until query/export are consistent, or Stage 1/4 will false-positive.
+
+`reset(entity_id)` is optional. The CLI does not call it.
+
+Raise `AdapterError` on ingest/query/export failure; `AdapterTimeoutError` when the wait exceeds `timeout_s`.
+
+Public types live under `memx.schemas` (`Session`, `Turn`, `Speaker`, `QueryResult`, `EntityState`, `MemoryFact`) and `memx.diagnostics`.

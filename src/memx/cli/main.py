@@ -8,7 +8,7 @@ from memx.cli.run_cmd import run
 
 app = typer.Typer(
     name="memx",
-    help="Vendor-agnostic diagnostic harness for agentic memory systems.",
+    help="Vendor-agnostic harness for evaluating memory systems, with failure diagnostics.",
     no_args_is_help=True,
 )
 app.command(name="run")(run)
