@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import threading
+from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
 from pathlib import Path
 from typing import Annotated
 
@@ -33,7 +35,15 @@ def run(
             )
         ),
     ],
-    adapter: Annotated[str, typer.Option(help="module.path:ClassName of a BaseMemoryAdapter.")],
+    adapter: Annotated[
+        str,
+        typer.Option(
+            help=(
+                "Built-in adapter name (mock, mem0, supermemory) or "
+                "module.path:ClassName of a BaseMemoryAdapter."
+            )
+        ),
+    ],
     source: Annotated[
         Path | None,
         typer.Option(
@@ -57,8 +67,13 @@ def run(
     ] = None,
     ready_timeout: Annotated[
         float,
-        typer.Option(help="Seconds to wait for adapter indexing after each ingest_session()."),
-    ] = 30.0,
+        typer.Option(
+            help=(
+                "Seconds to wait for adapter indexing after each ingest_session(). "
+                "LoCoMo sessions on hosted providers often need 120–300s."
+            )
+        ),
+    ] = 180.0,
     limit: Annotated[int | None, typer.Option(help="Cap the number of questions evaluated.")] = None,
     random_sample: Annotated[
         bool,
@@ -76,6 +91,25 @@ def run(
             help="RNG seed for --random. If omitted, a seed is chosen and printed so you can reproduce the sample."
         ),
     ] = None,
+    concurrency: Annotated[
+        int,
+        typer.Option(
+            help=(
+                "Independent cases (conversations) to ingest/wait in parallel. "
+                "Prefix --limit without --random stays serial so 'first N' is stable."
+            )
+        ),
+    ] = 4,
+    skip_ingest: Annotated[
+        bool,
+        typer.Option(
+            "--skip-ingest",
+            help=(
+                "Do not ingest or wait; query the existing store for these entity_ids. "
+                "Use after a prior run that already added sessions. Indexing must already be done."
+            ),
+        ),
+    ] = False,
 ) -> None:
     """Run a full benchmark: ingest sessions, ask questions, judge answers, diagnose failures."""
     console = Console(theme=MEMX_THEME)
@@ -90,6 +124,8 @@ def run(
             limit=limit,
             random_sample=random_sample,
             seed=seed,
+            concurrency=concurrency,
+            skip_ingest=skip_ingest,
             console=console,
         )
     except AdapterTimeoutError as exc:
@@ -114,6 +150,8 @@ def _run(
     limit: int | None,
     random_sample: bool,
     seed: int | None,
+    concurrency: int,
+    skip_ingest: bool,
     console: Console,
 ) -> list[DiagnosticResult]:
     resolved = ensure_dataset(dataset, source=source)
@@ -140,31 +178,36 @@ def _run(
             f"Random sample: {len(sampled)}/{len(all_ids)} questions (seed={used_seed})"
         )
 
+    if skip_ingest:
+        console.print(
+            "Skip ingest: querying existing store (no ingest_session / wait_until_ready; "
+            "indexing must already be done)."
+        )
+
     results: list[DiagnosticResult] = []
     traces: list[QuestionEval] = []
     passed = failed = 0
+    workers = max(1, concurrency)
+    if limit is not None and not random_sample:
+        workers = 1
+    if workers > 1:
+        console.print(f"Concurrency: {workers} cases in parallel")
 
     with build_eval_progress() as progress:
-        task = progress.add_task("Evaluating", total=None, status="0 passed / 0 failed")
-        for case in loader:
-            if question_filter is None:
-                cases_seen += 1
-            elif not any(q.question_id in question_filter for q in case.questions):
-                continue
-            remaining = None if limit is None or random_sample else max(0, limit - (passed + failed))
-            if remaining == 0:
-                break
-            for item in evaluate_questions(
-                cases=iter([case]),
-                adapter=adapter_instance,
-                judge=judge,
-                classifier=classifier,
-                snapshot_engine=snapshot_engine,
-                synthesizer=synthesizer,
-                ready_timeout=ready_timeout,
-                limit=remaining,
-                question_ids=question_filter,
-            ):
+        task = progress.add_task(
+            "Starting",
+            total=limit,
+            status="0 passed / 0 failed",
+        )
+        progress_lock = threading.Lock()
+
+        def report(phase: str) -> None:
+            with progress_lock:
+                update_eval_progress(progress, task, passed, failed, phase=phase)
+
+        def consume(item: QuestionEval) -> None:
+            nonlocal passed, failed
+            with progress_lock:
                 traces.append(item)
                 if item.verdict.passed:
                     passed += 1
@@ -172,7 +215,72 @@ def _run(
                     failed += 1
                     if item.diagnosis is not None:
                         results.append(item.diagnosis)
-                update_eval_progress(progress, task, passed, failed)
+                update_eval_progress(
+                    progress, task, passed, failed, completed=passed + failed
+                )
+
+        def run_case(case) -> list[QuestionEval]:
+            report(f"Case {case.case_id}")
+            return list(
+                evaluate_questions(
+                    cases=iter([case]),
+                    adapter=adapter_instance,
+                    judge=judge,
+                    classifier=classifier,
+                    snapshot_engine=snapshot_engine,
+                    synthesizer=synthesizer,
+                    ready_timeout=ready_timeout,
+                    limit=None,
+                    question_ids=question_filter,
+                    on_status=report,
+                    skip_ingest=skip_ingest,
+                )
+            )
+
+        if workers == 1:
+            for case in loader:
+                if question_filter is None:
+                    cases_seen += 1
+                elif not any(q.question_id in question_filter for q in case.questions):
+                    continue
+                remaining = None if limit is None or random_sample else max(0, limit - (passed + failed))
+                if remaining == 0:
+                    break
+                report(f"Case {case.case_id}")
+                for item in evaluate_questions(
+                    cases=iter([case]),
+                    adapter=adapter_instance,
+                    judge=judge,
+                    classifier=classifier,
+                    snapshot_engine=snapshot_engine,
+                    synthesizer=synthesizer,
+                    ready_timeout=ready_timeout,
+                    limit=remaining,
+                    question_ids=question_filter,
+                    on_status=report,
+                    skip_ingest=skip_ingest,
+                ):
+                    consume(item)
+        else:
+            in_flight: set = set()
+            with ThreadPoolExecutor(max_workers=workers) as pool:
+                for case in loader:
+                    if question_filter is None:
+                        cases_seen += 1
+                    elif not any(q.question_id in question_filter for q in case.questions):
+                        continue
+                    in_flight.add(pool.submit(run_case, case))
+                    if len(in_flight) >= workers:
+                        finished, in_flight = wait(in_flight, return_when=FIRST_COMPLETED)
+                        for future in finished:
+                            for item in future.result():
+                                consume(item)
+                if in_flight:
+                    finished, _pending = wait(in_flight)
+                    for future in finished:
+                        for item in future.result():
+                            consume(item)
+
 
     if cases_seen == 0:
         console.print("[fail]Empty dataset: no cases parsed from the source file.[/fail]")

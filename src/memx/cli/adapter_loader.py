@@ -5,13 +5,20 @@ import importlib
 import typer
 
 from memx.adapters.base import BaseMemoryAdapter
+from memx.adapters.registry import BUILTIN_ADAPTERS, resolve_adapter_path
+from memx.exceptions import AdapterError
 
 
 def load_adapter(adapter_path: str) -> BaseMemoryAdapter:
-    """Load a ``module.path:ClassName`` adapter. Instantiates with no arguments."""
+    """Load a built-in name (`mem0`) or ``module.path:ClassName``. Instantiates with no arguments."""
+    try:
+        adapter_path = resolve_adapter_path(adapter_path)
+    except ValueError as exc:
+        raise typer.BadParameter(str(exc)) from exc
     if adapter_path.count(":") != 1:
         raise typer.BadParameter(
-            "Adapter must be in 'module.path:ClassName' format "
+            "Adapter must be a built-in name "
+            f"({', '.join(sorted(BUILTIN_ADAPTERS))}) or 'module.path:ClassName' "
             f"(got {adapter_path!r})."
         )
     module_path, class_name = adapter_path.split(":")
@@ -36,6 +43,8 @@ def load_adapter(adapter_path: str) -> BaseMemoryAdapter:
         )
     try:
         instance = cls()
+    except AdapterError as exc:
+        raise typer.BadParameter(str(exc)) from exc
     except TypeError as exc:
         raise typer.BadParameter(
             f"Could not instantiate {adapter_path!r} with a no-arg constructor: {exc}"

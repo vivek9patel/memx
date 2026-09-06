@@ -4,6 +4,7 @@ import json
 
 import litellm
 
+from memx.llm import litellm_kwargs
 from memx.schemas.query import RetrievedFact
 from memx.synthesis.prompts import ANSWER_SYSTEM_PROMPT
 
@@ -23,19 +24,21 @@ class LiteLLMAnswerSynthesizer:
         if not facts:
             return ""
         response = litellm.completion(
-            model=self.model,
-            temperature=self.temperature,
-            messages=[
-                {"role": "system", "content": ANSWER_SYSTEM_PROMPT},
-                {
-                    "role": "user",
-                    "content": json.dumps(
-                        {
-                            "question": question,
-                            "retrieved_facts": [{"content": f.content} for f in facts],
-                        }
-                    ),
-                },
-            ],
+            **litellm_kwargs(
+                self.model,
+                temperature=self.temperature,
+                messages=[
+                    {"role": "system", "content": ANSWER_SYSTEM_PROMPT},
+                    {
+                        "role": "user",
+                        "content": json.dumps(
+                            {
+                                "question": question,
+                                "retrieved_facts": [{"content": f.content} for f in facts],
+                            }
+                        ),
+                    },
+                ],
+            ),
         )
         return (response["choices"][0]["message"]["content"] or "").strip()

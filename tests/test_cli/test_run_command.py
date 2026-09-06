@@ -109,3 +109,18 @@ def test_run_random_sample_is_reproducible(
         seed=3,
     )
     assert ids_first == expected
+
+
+def test_run_skip_ingest_does_not_require_ingest(runner, monkeypatch, isolate_last_run) -> None:
+    mock_judge(monkeypatch, always_pass)
+    result = runner.invoke(app, _run_args(limit="1") + ["--skip-ingest"])
+    assert result.exit_code == 0, result.output
+    assert "Skip ingest: querying existing store" in result.output
+    payload = json.loads(isolate_last_run.read_text(encoding="utf-8"))
+    assert [q["question_id"] for q in payload["questions"]] == ["conv-caroline_q0000"]
+
+
+def test_run_help_mentions_skip_ingest(runner) -> None:
+    result = runner.invoke(app, ["run", "--help"])
+    assert result.exit_code == 0, result.output
+    assert "--skip-ingest" in result.output

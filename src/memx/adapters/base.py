@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 
+from collections.abc import Callable
+
 from memx.schemas.query import QueryResult
 from memx.schemas.session import Session
 from memx.schemas.state import EntityState
@@ -43,12 +45,20 @@ class BaseMemoryAdapter(ABC):
         """Return a complete, order-independent snapshot of stored facts for entity_id."""
         raise NotImplementedError
 
-    def wait_until_ready(self, entity_id: str, timeout_s: float = 30.0) -> None:
+    def wait_until_ready(
+        self,
+        entity_id: str,
+        timeout_s: float = 30.0,
+        on_status: Callable[[str], None] | None = None,
+    ) -> None:
         """
         Block until async indexing/extraction for entity_id is complete and queryable.
 
         Override when ingest_session() returns before the backend is consistent
         (e.g. vector index lag, background embedding jobs). Default: no-op.
+
+        ``on_status`` is an optional UI hook; adapters may call it with a short
+        phase string while polling.
 
         Raises AdapterTimeoutError if timeout_s expires before ready.
         """

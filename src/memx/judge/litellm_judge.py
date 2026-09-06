@@ -7,6 +7,7 @@ from pydantic import BaseModel, ValidationError
 
 from memx.exceptions import MemxError
 from memx.judge.prompts import JUDGE_SYSTEM_PROMPT
+from memx.llm import litellm_kwargs
 
 
 class JudgeVerdict(BaseModel):
@@ -25,22 +26,24 @@ class LiteLLMJudge:
 
     def score(self, question: str, gold_answer: str, candidate_answer: str) -> JudgeVerdict:
         response = litellm.completion(
-            model=self.model,
-            temperature=self.temperature,
-            response_format={"type": "json_object"},
-            messages=[
-                {"role": "system", "content": JUDGE_SYSTEM_PROMPT},
-                {
-                    "role": "user",
-                    "content": json.dumps(
-                        {
-                            "question": question,
-                            "gold_answer": gold_answer,
-                            "candidate_answer": candidate_answer,
-                        }
-                    ),
-                },
-            ],
+            **litellm_kwargs(
+                self.model,
+                temperature=self.temperature,
+                response_format={"type": "json_object"},
+                messages=[
+                    {"role": "system", "content": JUDGE_SYSTEM_PROMPT},
+                    {
+                        "role": "user",
+                        "content": json.dumps(
+                            {
+                                "question": question,
+                                "gold_answer": gold_answer,
+                                "candidate_answer": candidate_answer,
+                            }
+                        ),
+                    },
+                ],
+            ),
         )
         raw = response["choices"][0]["message"]["content"]
         try:

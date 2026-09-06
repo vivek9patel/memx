@@ -26,8 +26,22 @@ def build_eval_progress(console: Console | None = None) -> Progress:
     )
 
 
-def update_eval_progress(progress: Progress, task_id: TaskID, passed: int, failed: int) -> None:
-    progress.update(
-        task_id,
-        status=f"[pass]{passed} passed[/pass] / [fail]{failed} failed[/fail]",
-    )
+def update_eval_progress(
+    progress: Progress,
+    task_id: TaskID,
+    passed: int,
+    failed: int,
+    *,
+    phase: str | None = None,
+    completed: int | None = None,
+) -> None:
+    """Refresh pass/fail counts and, optionally, the live phase (ingest/wait/query)."""
+    fields: dict[str, object] = {
+        "status": f"[pass]{passed} passed[/pass] / [fail]{failed} failed[/fail]",
+    }
+    if phase is not None:
+        fields["description"] = phase
+    if completed is not None:
+        progress.update(task_id, completed=completed, **fields)
+        return
+    progress.update(task_id, **fields)

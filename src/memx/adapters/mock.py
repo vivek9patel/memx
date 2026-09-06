@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import re
+import threading
 from time import perf_counter
 
 from memx.adapters.base import BaseMemoryAdapter
@@ -53,24 +54,27 @@ class MockMemoryAdapter(BaseMemoryAdapter):
         self.simulate_conflict_blindness = simulate_conflict_blindness
         self._facts: dict[str, list[MemoryFact]] = {}
         self._seq = 0
+        self._lock = threading.Lock()
 
     def ingest_session(self, session: Session) -> None:
-        store = self._facts.setdefault(session.entity_id, [])
-        for turn in session.turns:
-            if turn.speaker != Speaker.USER:
-                continue
-            if self._should_miss_extraction(turn):
-                continue
-            new_fact = self._fact_from_turn(session.entity_id, turn)
-            if not self.simulate_conflict_blindness:
-                store[:], superseded_id = self._invalidate_conflicts(store, new_fact)
-                if superseded_id is not None:
-                    new_fact = new_fact.model_copy(update={"supersedes": superseded_id})
-            store.append(new_fact)
+        with self._lock:
+            store = self._facts.setdefault(session.entity_id, [])
+            for turn in session.turns:
+                if turn.speaker != Speaker.USER:
+                    continue
+                if self._should_miss_extraction(turn):
+                    continue
+                new_fact = self._fact_from_turn(session.entity_id, turn)
+                if not self.simulate_conflict_blindness:
+                    store[:], superseded_id = self._invalidate_conflicts(store, new_fact)
+                    if superseded_id is not None:
+                        new_fact = new_fact.model_copy(update={"supersedes": superseded_id})
+                store.append(new_fact)
 
     def query(self, query_text: str, entity_id: str, top_k: int = 5) -> QueryResult:
         started = perf_counter()
-        facts = self._require_entity(entity_id)
+        with self._lock:
+            facts = list(self._require_entity(entity_id))
         needle = query_text.lower().strip()
         hits: list[RetrievedFact] = []
         if needle:
@@ -104,15 +108,17 @@ class MockMemoryAdapter(BaseMemoryAdapter):
         Facts are listed in insertion order. Callers must not depend on that
         order; treat the snapshot as an unordered collection.
         """
-        facts = self._require_entity(entity_id)
-        return EntityState(
-            entity_id=entity_id,
-            facts=list(facts),
-            snapshot_label="current",
-        )
+        with self._lock:
+            facts = self._require_entity(entity_id)
+            return EntityState(
+                entity_id=entity_id,
+                facts=list(facts),
+                snapshot_label="current",
+            )
 
     def reset(self, entity_id: str) -> None:
-        self._facts.pop(entity_id, None)
+        with self._lock:
+            self._facts.pop(entity_id, None)
 
     def _require_entity(self, entity_id: str) -> list[MemoryFact]:
         if entity_id not in self._facts:

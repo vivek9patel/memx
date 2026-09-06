@@ -25,6 +25,16 @@ dev = [
 streaming = [
     "ijson>=3.2",
 ]
+mem0 = [
+    "mem0ai>=0.1",
+]
+supermemory = [
+    "supermemory>=3.0",
+]
+providers = [
+    "mem0ai>=0.1",
+    "supermemory>=3.0",
+]
 
 [project.scripts]
 memx = "memx.cli.main:app"
