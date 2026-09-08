@@ -32,13 +32,14 @@ Details: [docs/diagnostics.md](docs/diagnostics.md).
 
 ## Install
 
-Python 3.11+. From this repo:
+Python 3.11+. The PyPI name is `memx-eval`; the CLI and import stay `memx`.
 
 ```bash
-pip install -e ".[dev]"
+pip install memx-eval
+pip install "memx-eval[providers]"   # Mem0 + SuperMemory SDKs
 ```
 
-Optional backends: `pip install -e ".[mem0]"` or `".[supermemory]"` (or `".[providers]"` for both).
+From this repo: `pip install -e ".[dev]"` (or `".[mem0]"` / `".[supermemory]"` / `".[providers]"`).
 
 ## Quick start
 

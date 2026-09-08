@@ -4,11 +4,11 @@
 
 | Name | Class | Extra |
 | --- | --- | --- |
-| `mem0` | `memx.adapters.mem0:Mem0Adapter` | `pip install -e ".[mem0]"` |
-| `supermemory` | `memx.adapters.supermemory:SupermemoryAdapter` | `pip install -e ".[supermemory]"` |
+| `mem0` | `memx.adapters.mem0:Mem0Adapter` | `pip install "memx-eval[mem0]"` |
+| `supermemory` | `memx.adapters.supermemory:SupermemoryAdapter` | `pip install "memx-eval[supermemory]"` |
 
 ```bash
-pip install -e ".[providers]"   # mem0 + supermemory
+pip install "memx-eval[providers]"   # mem0 + supermemory
 ```
 
 ## Mem0

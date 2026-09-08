@@ -3,6 +3,7 @@
 memx is a vendor-agnostic harness for evaluating memory systems: ingest the full case history, ask questions, judge answers, and **diagnose each FAIL** into a four-stage taxonomy (extraction / conflict / mutation / retrieval).
 
 ```bash
+pip install "memx-eval[providers]"
 export SUPERMEMORY_API_KEY=...
 memx datasets pull locomo
 memx run --dataset locomo --adapter supermemory --limit 5 --random
