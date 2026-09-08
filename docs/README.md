@@ -1,21 +1,20 @@
 # memx
 
-memx is a vendor-agnostic harness for evaluating memory systems: ingest sessions, ask questions, judge answers, and **diagnose each FAIL** into a four-stage taxonomy (extraction / conflict / mutation / retrieval).
+memx is a vendor-agnostic harness for evaluating memory systems: ingest the full case history, ask questions, judge answers, and **diagnose each FAIL** into a four-stage taxonomy (extraction / conflict / mutation / retrieval).
 
 ```bash
 export SUPERMEMORY_API_KEY=...
 memx datasets pull locomo
 memx run --dataset locomo --adapter supermemory --limit 5 --random
-memx debug <question_id>
 ```
 
-`memx run` writes a Diagnostic Summary and `.memx/last_run.json`. `memx debug` is how you inspect one FAIL (gold, candidate, retrieval, state diff, stage).
+`memx run` writes a Diagnostic Summary and `.memx/last_run.json`. Swap `--adapter` and `--dataset` and you get which questions each backend misses, and **which pipeline stage** failed — not only a leaderboard score. `memx debug` opens one of those misses: gold, candidate, retrieval, and store diff.
 
 ![Diagnostic Summary after a hosted run](../website/public/shots/01-summary-table.png)
 
 | Document | Contents |
 | --- | --- |
-| [Diagnostics](diagnostics.md) | Why FAILs are classified, stages, `debug`, `last_run.json` |
+| [Diagnostics](diagnostics.md) | Stages, `debug`, where adapters fail on a benchmark |
 | [CLI](cli.md) | `memx run`, `memx debug`, `memx datasets` |
 | [Adapters](adapters.md) | Built-in backends, env vars, custom adapters |
 | [Datasets](datasets.md) | Built-in datasets, cache, `--source` |

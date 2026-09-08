@@ -271,6 +271,15 @@ main.doc {
 .prose ul, .prose ol { padding-left: 1.25em; margin: 0 0 16px; }
 .prose li { margin: 4px 0; }
 
+.prose pre.mermaid {
+  background: var(--surface);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  text-align: center;
+  overflow-x: auto;
+}
+.prose pre.mermaid svg { max-width: 100%; height: auto; }
+
 .shot {
   margin: 20px 0 28px;
   border: 1px solid var(--line);

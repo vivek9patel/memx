@@ -1,3 +1,4 @@
+import { MermaidBoot } from "@/components/MermaidBoot";
 import { extractToc } from "@/lib/docs";
 import { neighbors } from "@/lib/nav";
 import { Sidebar } from "@/components/Sidebar";
@@ -8,6 +9,7 @@ export function DocShell({ href, html }: { href: string; html: string }) {
 
   return (
     <div className="shell">
+      <MermaidBoot />
       <Sidebar current={href} />
       <div className="stage">
         <main className="doc">

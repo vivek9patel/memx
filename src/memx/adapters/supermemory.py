@@ -121,8 +121,8 @@ class SupermemoryAdapter(BaseMemoryAdapter):
                 )
                 raise AdapterTimeoutError(
                     f"Supermemory indexing timed out for {entity_id} after {timeout_s:.0f}s "
-                    f"({detail}). Memories are not queryable until dreaming_status=done. "
-                    "Increase with --ready-timeout."
+                    f"({detail}). Search is not reliable until status=done and "
+                    "dreaming_status=done. Increase with --ready-timeout."
                 )
             snapshots = map_parallel(self._document_snapshot, remaining)
             last_seen.update(snapshots)
@@ -287,18 +287,16 @@ def _is_failed(snapshot: str) -> bool:
 
 
 def _is_ready(snapshot: str) -> bool:
-    """Ready once extracted memories exist (dreaming finished).
+    """Ready when the document is indexed *and* memories are extracted.
 
-    SuperMemory often stays on ``status=indexing`` long after
-    ``dreaming_status=done``. Hybrid search can use those memories; waiting
-    for document status=done aborts evals on a stall that does not block query.
+    ``dreaming_status=done`` while ``status=indexing`` is not queryable: hybrid
+    search returns empty hits and the dashboard still shows indexing. Treat that
+    as in-progress, not ready.
     """
     status, dreaming = _parse_snapshot(snapshot)
-    if status in _FAILED or dreaming in _FAILED:
+    if status not in _DONE:
         return False
-    if dreaming in _DONE:
-        return True
-    return status in _DONE and dreaming in {"", "unknown"}
+    return dreaming in _DONE or dreaming in {"", "unknown"}
 
 
 def _first_kwargs(fn: Any, attempts: tuple[dict[str, Any], ...]) -> Any:

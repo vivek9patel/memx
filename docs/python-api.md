@@ -14,13 +14,13 @@ result = adapter.query("where does alex live?", session.entity_id)
 
 ## Contract
 
-Lifecycle for a session that has questions:
+Lifecycle for a case:
 
-1. `export_state(entity_id)` — pre snapshot
-2. `ingest_session(session)`
+1. `export_state(entity_id)` — pre-ingest snapshot
+2. `ingest_session(session)` for every session on the case, in order
 3. `wait_until_ready(entity_id, timeout_s=..., on_status=...)`
-4. `export_state(entity_id)` — post snapshot
-5. `query(text, entity_id)` per question on that session
+4. `export_state(entity_id)` — post-ingest snapshot
+5. `query(text, entity_id)` for each selected question
 
 Synchronous stores may leave `wait_until_ready` as the default no-op. Async stores must block or poll until query/export are consistent, or Stage 1/4 will false-positive.
 

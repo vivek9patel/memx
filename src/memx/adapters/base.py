@@ -14,12 +14,12 @@ class BaseMemoryAdapter(ABC):
     Vendor-agnostic contract every memory backend (Mem0, Graphiti, FAISS-backed
     stores, custom systems) must implement to be benchmarked by memx.
 
-    Lifecycle expected by the diagnostic engine (Prompt 3) and CLI (Prompt 5):
-        1. export_state(entity_id)   -> pre-session snapshot
-        2. ingest_session(session)
+    Lifecycle expected by the diagnostic engine and CLI:
+        1. export_state(entity_id)   -> pre-ingest snapshot
+        2. ingest_session(session)   -> every session on the case, in order
         3. wait_until_ready(entity_id) -> block until indexing/extraction is queryable
-        4. export_state(entity_id)   -> post-session snapshot
-        5. query(text, entity_id)    -> per benchmark question
+        4. export_state(entity_id)   -> post-ingest snapshot
+        5. query(text, entity_id)    -> each selected question after the full haystack is in
 
     Adapters with synchronous ingest (in-memory, fully blocking backends) may
     leave wait_until_ready() as the default no-op. Async backends (vector DBs,

@@ -4,12 +4,14 @@ Vendor-agnostic harness for evaluating memory systems: it scores answers **and**
 
 Ingest conversational sessions into a backend (any adapter), ask benchmark questions, judge the answers, then on each FAIL snapshot the store and assign a stage: extraction, conflict resolution, mutation, or retrieval. Inspect one case with `memx debug`.
 
+A run ingests the **full official history** on each case (LoCoMo conversation or LongMemEval haystack) before asking selected questions. `--limit` / `--random` only choose which questions to score.
+
 ## What a run gives you
 
 - Pass/fail per question (LLM judge)
 - A **Diagnostic Summary** of FAIL counts by stage
-- `.memx/last_run.json` (cwd; gitignored) with gold, candidate, retrieval, state diff, and diagnosis
-- `memx debug <question_id>` for one record: question, gold, provider answer, retrieved facts, stage badge, state diff
+- `.memx/last_run.json` with gold, candidate, retrieval, state diff, and diagnosis
+- `memx debug` for one record: question, gold, provider answer, retrieved facts, stage badge, state diff
 
 ![Diagnostic Summary after a hosted run](website/public/shots/01-summary-table.png)
 
@@ -44,7 +46,6 @@ Optional backends: `pip install -e ".[mem0]"` or `".[supermemory]"` (or `".[prov
 export SUPERMEMORY_API_KEY=...   # or MEM0_API_KEY and --adapter mem0
 memx datasets pull locomo
 memx run --dataset locomo --adapter supermemory --limit 5 --random
-memx debug <question_id from the summary>
 ```
 
 See [docs/adapters.md](docs/adapters.md).

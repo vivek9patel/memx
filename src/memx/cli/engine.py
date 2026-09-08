@@ -4,7 +4,6 @@ from collections.abc import Callable, Collection, Iterator
 from dataclasses import dataclass
 
 from memx.adapters.base import BaseMemoryAdapter
-from memx.adapters.poll import run_parallel
 from memx.cli.answer_builder import build_candidate_answer
 from memx.diagnostics.classifier import DiagnosticClassifier
 from memx.diagnostics.models import DiagnosticResult, StateDiff
@@ -13,7 +12,6 @@ from memx.exceptions import AdapterError
 from memx.judge.litellm_judge import LiteLLMJudge, JudgeVerdict
 from memx.schemas.benchmark import BenchmarkCase, BenchmarkQuestion
 from memx.schemas.query import QueryResult
-from memx.schemas.session import Session
 from memx.schemas.state import EntityState
 from memx.synthesis.litellm_answer import LiteLLMAnswerSynthesizer
 
@@ -41,23 +39,25 @@ def safe_export(adapter: BaseMemoryAdapter, entity_id: str, label: str) -> Entit
     )
 
 
-def ingest_session_diff(
+def ingest_case_diff(
     adapter: BaseMemoryAdapter,
     entity_id: str,
-    session,
+    sessions,
     snapshot_engine: StateSnapshotEngine,
     ready_timeout: float,
     on_status: Callable[[str], None] | None = None,
 ) -> StateDiff:
+    """Ingest every session in order, wait once, return pre/post store diff."""
     name = getattr(adapter, "adapter_name", "adapter")
-    _emit(on_status, f"Snapshot before {session.session_id}")
-    pre = safe_export(adapter, entity_id, "pre_session")
-    _emit(on_status, f"Ingesting {session.session_id} via {name}")
-    adapter.ingest_session(session)
+    _emit(on_status, f"Snapshot before ingest ({entity_id})")
+    pre = safe_export(adapter, entity_id, "pre_ingest")
+    for session in sessions:
+        _emit(on_status, f"Ingesting {session.session_id} via {name}")
+        adapter.ingest_session(session)
     _emit(on_status, f"Waiting on {name} ({entity_id})")
     adapter.wait_until_ready(entity_id, timeout_s=ready_timeout, on_status=on_status)
-    _emit(on_status, f"Snapshot after {session.session_id}")
-    post = safe_export(adapter, entity_id, "post_session")
+    _emit(on_status, f"Snapshot after ingest ({entity_id})")
+    post = safe_export(adapter, entity_id, "post_ingest")
     return snapshot_engine.diff(pre, post)
 
 
@@ -79,95 +79,39 @@ def evaluate_questions(
     evaluated = 0
     selected = None if question_ids is None else frozenset(question_ids)
     for case in cases:
+        if limit is not None and evaluated >= limit:
+            return
+        questions = _selected_questions(case, question_id, selected)
+        if not questions:
+            continue
         if skip_ingest:
-            questions = _selected_questions(case, question_id, selected)
-            if not questions:
-                continue
-            if limit is not None and evaluated >= limit:
-                return
             diff = _existing_state_diff(
                 adapter, case.entity_id, snapshot_engine, on_status=on_status
             )
-            for item in _score_questions(
-                questions,
-                case=case,
-                adapter=adapter,
-                judge=judge,
-                classifier=classifier,
-                synthesizer=synthesizer,
-                diff=diff,
-                on_status=on_status,
-                empty_on_query_error=True,
-            ):
-                if limit is not None and evaluated >= limit:
-                    return
-                evaluated += 1
-                yield item
-            continue
-        if selected is not None:
-            needed_sessions = {
-                question.session_id
-                for question in case.questions
-                if question.question_id in selected
-            }
-            if not needed_sessions:
-                continue
-            sessions = _sessions_through(case.sessions, needed_sessions)
         else:
-            sessions = case.sessions
-        queued: list[Session] = []
-        for session in sessions:
-            if limit is not None and evaluated >= limit:
-                return
-            questions = [
-                q
-                for q in case.questions
-                if q.session_id == session.session_id
-            ]
-            if question_id is not None:
-                questions = [q for q in questions if q.question_id == question_id]
-            if selected is not None:
-                questions = [q for q in questions if q.question_id in selected]
-            if not questions:
-                queued.append(session)
-                continue
-            _flush_queued_ingests(
+            diff = ingest_case_diff(
                 adapter,
                 case.entity_id,
-                queued,
-                ready_timeout,
-                on_status=on_status,
-            )
-            queued = []
-            diff = ingest_session_diff(
-                adapter,
-                case.entity_id,
-                session,
+                case.sessions,
                 snapshot_engine,
                 ready_timeout,
                 on_status=on_status,
             )
-            for item in _score_questions(
-                questions,
-                case=case,
-                adapter=adapter,
-                judge=judge,
-                classifier=classifier,
-                synthesizer=synthesizer,
-                diff=diff,
-                on_status=on_status,
-            ):
-                if limit is not None and evaluated >= limit:
-                    return
-                evaluated += 1
-                yield item
-        _flush_queued_ingests(
-            adapter,
-            case.entity_id,
-            queued,
-            ready_timeout,
+        for item in _score_questions(
+            questions,
+            case=case,
+            adapter=adapter,
+            judge=judge,
+            classifier=classifier,
+            synthesizer=synthesizer,
+            diff=diff,
             on_status=on_status,
-        )
+            empty_on_query_error=skip_ingest,
+        ):
+            if limit is not None and evaluated >= limit:
+                return
+            evaluated += 1
+            yield item
 
 
 def _existing_state_diff(
@@ -236,33 +180,6 @@ def _score_questions(
             candidate_answer=candidate,
             query_result=query_result,
         )
-
-
-def _flush_queued_ingests(
-    adapter: BaseMemoryAdapter,
-    entity_id: str,
-    queued: list[Session],
-    ready_timeout: float,
-    on_status: Callable[[str], None] | None = None,
-) -> None:
-    if not queued:
-        return
-    name = getattr(adapter, "adapter_name", "adapter")
-    labels = ", ".join(session.session_id for session in queued)
-    _emit(on_status, f"Queue ingest {len(queued)} sessions via {name} ({labels})")
-    run_parallel(adapter.ingest_session, queued)
-    _emit(on_status, f"Waiting on {name} ({entity_id})")
-    adapter.wait_until_ready(entity_id, timeout_s=ready_timeout, on_status=on_status)
-
-
-def _sessions_through(sessions: list[Session], needed_ids: Collection[str]) -> list[Session]:
-    last = -1
-    for index, session in enumerate(sessions):
-        if session.session_id in needed_ids:
-            last = index
-    if last < 0:
-        return []
-    return sessions[: last + 1]
 
 
 def _query(

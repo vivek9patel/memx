@@ -16,13 +16,12 @@ pip install -e ".[providers]"   # mem0 + supermemory
 - `MEM0_API_KEY` set: Mem0 platform client.
 - Unset: OSS `Memory()` and `OPENAI_API_KEY`. Extraction LLM defaults to `gpt-5-mini`; override with `MEM0_LLM_MODEL`.
 - Ingest uses `async_mode` when the SDK accepts it. `wait_until_ready` polls event IDs in parallel.
-- GPT-5 family models reject `temperature=0.1`; the adapter marks them as reasoning models so Mem0 does not send that parameter.
 
 ## SuperMemory
 
 - `SUPERMEMORY_API_KEY` required unless `SUPERMEMORY_BASE_URL` points at a keyless self-host.
 - Ingest: `dreaming="instant"`, `custom_id=session_id`, `container_tag=entity_id`.
-- `wait_until_ready` polls `documents.get`. Ready when `dreaming_status` is done (memories exist). Document `status=indexing` after that is not treated as blocking.
+- `wait_until_ready` polls `documents.get`. Ready when `status=done` and `dreaming_status` is done (or unset). `status=indexing` is still in-progress even if dreaming already finished.
 - Query: hybrid search (`search_mode=hybrid`, threshold `0.3`) over memories and chunks.
 - `export_state` is `profile()` (static + dynamic). Index-based fact ids mean diffs can look like mass remove/add even when content is similar.
 - `reset(entity_id)` calls `documents.delete_bulk` by container tag. `memx run` never calls `reset`.
@@ -39,4 +38,4 @@ The class must be constructible with no required arguments (env vars / defaults)
 
 ## Ingest scheduling
 
-Context sessions with no selected questions are ingested concurrently, then one `wait_until_ready` covers that batch. A session that has selected questions is ingested and waited on alone so the state diff for diagnostics belongs to that session. Independent conversations (`case_id` / LoCoMo `sample_id`) run with `--concurrency`.
+The harness ingests **every** `BenchmarkCase.sessions` entry in list order, then one `wait_until_ready` for that entity, then asks the selected questions. `--limit` / `--random` only choose which questions to score. Independent cases (`case_id` / LoCoMo `sample_id` / LongMemEval question id) run with `--concurrency`. Sessions inside a case are never parallelized (order matters for knowledge-update).

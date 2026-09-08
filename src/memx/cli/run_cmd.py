@@ -69,7 +69,7 @@ def run(
         float,
         typer.Option(
             help=(
-                "Seconds to wait for adapter indexing after each ingest_session(). "
+                "Seconds to wait for adapter indexing after all sessions of a case. "
                 "One slow conversation no longer aborts the rest of the run."
             )
         ),
@@ -96,7 +96,8 @@ def run(
         typer.Option(
             help=(
                 "Independent cases (conversations) to ingest/wait in parallel. "
-                "Prefix --limit without --random stays serial so 'first N' is stable."
+                "Sessions inside a case stay sequential. --limit without --random "
+                "forces 1 so 'first N' questions is stable."
             )
         ),
     ] = 4,
@@ -106,7 +107,8 @@ def run(
             "--skip-ingest",
             help=(
                 "Do not ingest or wait; query the existing store for these entity_ids. "
-                "Use after a prior run that already added sessions. Indexing must already be done."
+                "Use after a prior run that already ingested the full case history. "
+                "Indexing must already be done."
             ),
         ),
     ] = False,
@@ -181,7 +183,7 @@ def _run(
     if skip_ingest:
         console.print(
             "Skip ingest: querying existing store (no ingest_session / wait_until_ready; "
-            "indexing must already be done)."
+            "full case history must already be indexed)."
         )
 
     results: list[DiagnosticResult] = []

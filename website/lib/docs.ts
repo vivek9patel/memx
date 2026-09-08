@@ -77,7 +77,30 @@ export function decorateHtml(html: string): string {
     /<img src="(\/shots\/[^"]+)" alt="([^"]*)">/gi,
     (_m, src: string, alt: string) => figureForShot(dir, src, alt),
   );
+  out = out.replace(
+    /<pre><code class="language-mermaid">([\s\S]*?)<\/code><\/pre>/gi,
+    (_m, body: string) => {
+      const src = decodeEntities(body).trim();
+      return `<pre class="mermaid" aria-label="Pipeline diagram">${escapeHtml(src)}</pre>`;
+    },
+  );
   return out;
+}
+
+function decodeEntities(value: string): string {
+  return value
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&amp;/g, "&");
+}
+
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
 }
 
 function figureForShot(dir: string, src: string, alt: string): string {

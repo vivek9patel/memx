@@ -20,8 +20,10 @@ memx run --dataset locomo --adapter supermemory --limit 5 --random
 
 `--source path/to.json` uses a local file and does not download. The loader is still chosen from `--dataset` (`locomo` vs `longmemeval` JSON shapes).
 
-Sampling:
+`BenchmarkCase.sessions` is the complete official history. The harness always ingests that list, then asks selected questions. A shorter corpus belongs on the case (LongMemEval oracle already ships evidence sessions only).
 
-- `--limit N` without `--random`: first N questions in file order, serial ingest.
-- `--limit N --random`: uniform sample of N question ids; `--seed` makes it reproducible.
-- LongMemEval: each question is its own case (`entity_id` = question id). Oracle only ingests evidence sessions; `-s` / `-m` ingest the full haystack (hosted cost and `--ready-timeout` go up).
+Sampling (questions only; never trims sessions):
+
+- `--limit N` without `--random`: first N questions in file order, serial cases. The case that owns those questions still ingests every session it has (on LoCoMo, often a full conversation).
+- `--limit N --random`: uniform sample of N question ids; `--seed` makes it reproducible. Each owning case ingests its full haystack.
+- LongMemEval: each question is its own case (`entity_id` = question id). Oracle haystack is evidence sessions; `-s` / `-m` haystacks are the full compiled histories (hosted cost and `--ready-timeout` go up).

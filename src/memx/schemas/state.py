@@ -29,7 +29,7 @@ class EntityState(BaseModel):
     model_config = ConfigDict(frozen=True)
     entity_id: str
     facts: list[MemoryFact]
-    snapshot_label: str  # e.g. "pre_session", "post_session"
+    snapshot_label: str  # e.g. "pre_ingest", "post_ingest"
 
     def facts_by_status(self, status: FactStatus) -> list[MemoryFact]:
         return [f for f in self.facts if f.status == status]

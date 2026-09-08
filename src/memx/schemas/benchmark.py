@@ -21,7 +21,7 @@ class BenchmarkQuestion(BaseModel):
     model_config = ConfigDict(frozen=True)
     question_id: str
     entity_id: str
-    session_id: str  # which Session this question is evaluated against
+    session_id: str  # evidence / answer session (metadata); ingest uses the full case haystack
     question_text: str
     gold_answer: str
     category: QuestionCategory
@@ -30,7 +30,12 @@ class BenchmarkQuestion(BaseModel):
 
 
 class BenchmarkCase(BaseModel):
-    """One fully-linked unit: the conversational session(s) plus the questions asked about them."""
+    """One fully-linked unit: the complete official history plus questions about it.
+
+    ``sessions`` is the haystack the harness always ingests (LoCoMo conversation,
+    LongMemEval haystack, or a shorter list if the dataset is an oracle subset).
+    Sampling flags choose which ``questions`` to score, not which sessions to drop.
+    """
 
     model_config = ConfigDict(frozen=True)
     case_id: str

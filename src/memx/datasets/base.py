@@ -34,7 +34,7 @@ class BaseDatasetLoader(ABC):
 
     @abstractmethod
     def iter_cases(self) -> Iterator[BenchmarkCase]:
-        """Stream-parse the source file and yield one validated BenchmarkCase at a time."""
+        """Yield validated cases. ``case.sessions`` must be the complete official history."""
         raise NotImplementedError
 
     def __iter__(self) -> Iterator[BenchmarkCase]:

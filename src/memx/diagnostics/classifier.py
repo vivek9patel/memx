@@ -32,7 +32,7 @@ class DiagnosticClassifier:
         query_result: QueryResult,
     ) -> DiagnosticResult:
         # --- Stage 1: Extraction Failure ---
-        # Structural signal: no POST-snapshot fact (added, unchanged, or
+        # Structural signal: no POST-ingest fact (added, unchanged, or
         # status/content-changed) has content the relevance function accepts
         # as gold-related. The memory store never captured the needed fact.
         relevant_entries = [
@@ -45,7 +45,7 @@ class DiagnosticClassifier:
                 question_id=question.question_id,
                 stage=FailureStage.STAGE_1_EXTRACTION,
                 rationale=(
-                    "No post-session fact content is relevant to the gold answer; "
+                    "No post-ingest fact content is relevant to the gold answer; "
                     "the underlying information was never extracted into the memory store."
                 ),
             )
