@@ -30,7 +30,7 @@ def _import_supermemory_client(api_key: str | None, base_url: str | None) -> Any
     except ImportError as exc:
         raise AdapterError(
             "Supermemory SDK is not installed. Install the extra: "
-            "pip install 'memx[supermemory]'"
+            "pip install 'memx-eval[supermemory]'"
         ) from exc
     kwargs: dict[str, Any] = {}
     if api_key:

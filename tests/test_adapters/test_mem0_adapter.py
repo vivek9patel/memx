@@ -94,13 +94,13 @@ def test_mem0_missing_sdk_message(monkeypatch) -> None:
     monkeypatch.delenv("MEM0_API_KEY", raising=False)
 
     def boom(_api_key):
-        raise AdapterError("Mem0 SDK is not installed. Install the extra: pip install 'memx[mem0]'")
+        raise AdapterError("Mem0 SDK is not installed. Install the extra: pip install 'memx-eval[mem0]'")
 
     monkeypatch.setattr("memx.adapters.mem0._import_mem0_client", boom)
     try:
         Mem0Adapter()
     except AdapterError as exc:
-        assert "memx[mem0]" in str(exc)
+        assert "memx-eval[mem0]" in str(exc)
     else:
         raise AssertionError("expected AdapterError")
 

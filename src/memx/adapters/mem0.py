@@ -29,7 +29,7 @@ def _import_mem0_client(api_key: str | None) -> Any:
         from mem0 import Memory, MemoryClient
     except ImportError as exc:
         raise AdapterError(
-            "Mem0 SDK is not installed. Install the extra: pip install 'memx[mem0]'"
+            "Mem0 SDK is not installed. Install the extra: pip install 'memx-eval[mem0]'"
         ) from exc
     if api_key:
         return MemoryClient(api_key=api_key)
